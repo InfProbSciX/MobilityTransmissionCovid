@@ -59,22 +59,25 @@ saveRDS(data, 'data.rds')
 
 data <- readRDS('data.rds')
 
-n_days <- nrow(data)
-weighted_avg_mat <- function(dist, mult = 1.0) {
-    row <- function(i) c(rev(dist[1:i]), rep(0, n_days - i))/sum(dist[1:i])
-    return(t(sapply(1:n_days, row)))
+weighted_avg_mat <- function(col) {
+    mat <- toeplitz(col)
+    mat[upper.tri(mat)] <- 0
+    mat <- mat/rowSums(mat)
+    return(mat)
 }
 
+n_days <- nrow(data)
 H <- weighted_avg_mat(dgamma(1:n_days, (18.2/8.46)^2, 18.2/(8.46^2)))
 W <- weighted_avg_mat(dgamma(1:n_days, (6.48/3.83)^2, 6.48/(3.83^2)))
-
-#################################
-# Models (unchecked work!)
 
 int <- as.integer
 stan_data <- list(n_days = n_days, n_coun = 2, H = H, W = W,
                   Di = as.matrix(data[, .(int(round(d_uk)), int(round(d_us)))]),
                   M = as.matrix(data[, .(m_uk, m_us)]))
+stan_data$M[stan_data$M > 0] = 0
+
+#################################
+# Models (unchecked work!)
 
 model_string <- '
 data {
@@ -91,26 +94,29 @@ transformed data {
     D = to_matrix(Di);
 }
 parameters {
-    real<lower = 0, upper = 100> d;
-    real<lower = 0, upper = 100> b[n_coun];
-    // real<lower = 0, upper = 5> R0[n_coun];
-    matrix<lower = 0, upper = 5>[n_days, n_coun] R;
+    real<lower = 0> d;
+    vector<lower = 0, upper = 10>[n_coun] b;
+    vector<lower = 0, upper = 5>[n_coun] R0;
 }
 transformed parameters {
     matrix[n_days, n_coun] R_d;
-    for (i in 1:n_coun) {
-        R_d[, i] = H * R[, i]; // exp(-b[i] * (1 + M[, i])) * R0[i];
-    }
+    matrix[n_days, n_coun] mu;
+    R_d = H * exp(M * diag_matrix(b)) * diag_matrix(R0);
+    mu = prs + R_d .* (W*D);
 }
 model {
-    for (i in 1:n_coun) {
-        Di[, i] ~ neg_binomial_2(prs + R_d[, i] .* (W*D[, i]), d);
-    }
+    d ~ exponential(1);
+    for (i in 1:n_coun)
+        Di[, i] ~ neg_binomial_2(mu[, i], d);
 }
 '
 
 model <- stan_model(model_code = model_string)
-samples <- sampling(model, iter = 1000, chains = 4, data = stan_data)
+samples <- sampling(model, iter = 3000, chains = 4, data = stan_data)
+traceplot(samples, pars = c('R0', 'b', 'd'))
+
+#################################
+# Plots
 
 r <- summary(samples, pars = 'R_d')$summary[, c(1, 3)]
 r_mu <- matrix(r[, 1], ncol = 2, byrow = T)
@@ -124,7 +130,7 @@ plot_uk <- plot_uk + geom_ribbon(aes(ymin = mu - 2*sg, ymax = mu + 2*sg), alpha 
 plot_uk <- plot_uk + geom_hline(yintercept = 1, linetype = 2)
 plot_uk <- plot_uk + labs(title = 'uk', y = 'r_experienced')
 
-plot_us <- ggplot(r_uk, aes(x = date))
+plot_us <- ggplot(r_us, aes(x = date))
 plot_us <- plot_us + geom_line(aes(y = mu))
 plot_us <- plot_us + geom_ribbon(aes(ymin = mu - 2*sg, ymax = mu + 2*sg), alpha = 0.5)
 plot_us <- plot_us + geom_hline(yintercept = 1, linetype = 2)
