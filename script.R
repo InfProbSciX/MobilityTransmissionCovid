@@ -56,7 +56,6 @@ covid_data <- covid_data[!is.na(d_uk + d_us)]
 
 data <- merge(mobility_data, covid_data, by = 'date')
 saveRDS(data, 'data.rds')
-
 data <- readRDS('data.rds')
 
 weighted_avg_mat <- function(col) {
@@ -67,8 +66,8 @@ weighted_avg_mat <- function(col) {
 }
 
 n_days <- nrow(data)
-H <- weighted_avg_mat(dgamma(1:n_days, (18.2/8.46)^2, 18.2/(8.46^2)))
-W <- weighted_avg_mat(dgamma(1:n_days, (6.48/3.83)^2, 6.48/(3.83^2)))
+H <- weighted_avg_mat(dgamma(1:n_days, (18.2/8.46)^2, 18.2/(8.46^2))) #infec-to-dth
+W <- weighted_avg_mat(dgamma(1:n_days, (6.48/3.83)^2, 6.48/(3.83^2))) #serial-intrv
 
 int <- as.integer
 stan_data <- list(n_days = n_days, n_coun = 2, H = H, W = W,
@@ -83,8 +82,8 @@ model_string <- '
 data {
     int n_days;
     int n_coun;
-    int Di[n_days, n_coun];
-    matrix[n_days, n_coun] M;
+    int Di[n_days, n_coun];   //integer-deaths
+    matrix[n_days, n_coun] M; //mobility
     matrix[n_days, n_days] H;
     matrix[n_days, n_days] W;
 }
@@ -99,7 +98,7 @@ parameters {
     vector<lower = 0, upper = 5>[n_coun] R0;
 }
 transformed parameters {
-    matrix[n_days, n_coun] R_d;
+    matrix[n_days, n_coun] R_d; //observed-r
     matrix[n_days, n_coun] mu;
     R_d = H * exp(M * diag_matrix(b)) * diag_matrix(R0);
     mu = prs + R_d .* (W*D);
