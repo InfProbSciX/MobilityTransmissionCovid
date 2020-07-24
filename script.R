@@ -72,7 +72,8 @@ W <- weighted_avg_mat(dgamma(1:n_days, (6.48/3.83)^2, 6.48/(3.83^2))) #serial-in
 int <- as.integer
 stan_data <- list(n_days = n_days, n_coun = 2, H = H, W = W,
                   Di = as.matrix(data[, .(int(round(d_uk)), int(round(d_us)))]),
-                  M = as.matrix(data[, .(m_uk, m_us)]))
+                  M = as.matrix(data[, .(m_uk, m_us)]),
+                  Sigm = matrix(rep(plogis(1:n_days, 45, 3), 2), ncol = 2))
 stan_data$M[stan_data$M > 0] = 0
 
 #################################
@@ -86,6 +87,7 @@ data {
     matrix[n_days, n_coun] M; //mobility
     matrix[n_days, n_days] H;
     matrix[n_days, n_days] W;
+    matrix[n_days, n_coun] Sigm;
 }
 transformed data {
     matrix[n_days, n_coun] D;
@@ -94,13 +96,15 @@ transformed data {
 }
 parameters {
     real<lower = 0> d;
-    vector<lower = 0, upper = 10>[n_coun] b;
+    real<lower = 0, upper = 2> Rp;
+    vector<lower = 0, upper = 100>[n_coun] b;
     vector<lower = 0, upper = 5>[n_coun] R0;
 }
 transformed parameters {
     matrix[n_days, n_coun] R_d; //observed-r
     matrix[n_days, n_coun] mu;
     R_d = H * exp(M * diag_matrix(b)) * diag_matrix(R0);
+    R_d += Rp * Sigm; // addition not part of report 26
     mu = prs + R_d .* (W*D);
 }
 model {
@@ -112,14 +116,14 @@ model {
 
 model <- stan_model(model_code = model_string)
 samples <- sampling(model, iter = 3000, chains = 4, data = stan_data)
-traceplot(samples, pars = c('R0', 'b', 'd'))
+traceplot(samples, pars = c('R0', 'Rp', 'b', 'd'))
 
 #################################
 # Plots
 
 r <- summary(samples, pars = 'R_d')$summary[, c(1, 3)]
-r_mu <- matrix(r[, 1], ncol = 2, byrow = T)
-r_sg <- matrix(r[, 2], ncol = 2, byrow = T)
+r_mu <- matrix(r[, 1], ncol = stan_data$n_coun, byrow = T)
+r_sg <- matrix(r[, 2], ncol = stan_data$n_coun, byrow = T)
 r_uk <- data.table(date = data$date, mu = r_mu[, 1], sg = r_sg[, 1])
 r_us <- data.table(date = data$date, mu = r_mu[, 2], sg = r_sg[, 2])
 
