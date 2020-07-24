@@ -96,15 +96,14 @@ transformed data {
 }
 parameters {
     real<lower = 0> d;
-    real<lower = 0, upper = 2> Rp;
+    vector<lower = -100, upper = 0>[n_coun] bi; // addition not part of report 26
     vector<lower = 0, upper = 100>[n_coun] b;
     vector<lower = 0, upper = 5>[n_coun] R0;
 }
 transformed parameters {
     matrix[n_days, n_coun] R_d; //observed-r
     matrix[n_days, n_coun] mu;
-    R_d = H * exp(M * diag_matrix(b)) * diag_matrix(R0);
-    R_d += Rp * Sigm; // addition not part of report 26
+    R_d = H * exp(M * diag_matrix(b) + Sigm * diag_matrix(bi)) * diag_matrix(R0);
     mu = prs + R_d .* (W*D);
 }
 model {
@@ -116,7 +115,7 @@ model {
 
 model <- stan_model(model_code = model_string)
 samples <- sampling(model, iter = 3000, chains = 4, data = stan_data)
-traceplot(samples, pars = c('R0', 'Rp', 'b', 'd'))
+traceplot(samples, pars = c('R0', 'bi', 'b', 'd'))
 
 #################################
 # Plots
