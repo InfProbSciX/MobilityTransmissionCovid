@@ -14,7 +14,8 @@ I've made a small chamge to this to make post-lockdown behaviour not be exactly 
 
 ... where `b_1` is in `[0, 100]` and represents my belief that mobility post-lockdown will correspond to a smaller
 reproductive rate than pre-lockdown mobility of the same level. This model resulted in sensible predictions in some
-tests that I ran.
+tests that I ran. `s(t)` is a smooth step function that steps up during
+April 2020.
 
 The observation model is roughly:
 
