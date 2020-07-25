@@ -128,14 +128,14 @@ r_us <- data.table(date = data$date, mu = r_mu[, 2], sg = r_sg[, 2])
 
 plot_uk <- ggplot(r_uk, aes(x = date))
 plot_uk <- plot_uk + geom_line(aes(y = mu))
-plot_uk <- plot_uk + geom_ribbon(aes(ymin = mu - 2*sg, ymax = mu + 2*sg), alpha = 0.5)
+plot_uk <- plot_uk + geom_ribbon(aes(ymin = mu - 3*sg, ymax = mu + 3*sg), alpha = 0.5, fill = 'cyan')
 plot_uk <- plot_uk + geom_hline(yintercept = 1, linetype = 2)
 plot_uk <- plot_uk + labs(title = 'uk', y = 'r_experienced')
 
 plot_us <- ggplot(r_us, aes(x = date))
 plot_us <- plot_us + geom_line(aes(y = mu))
-plot_us <- plot_us + geom_ribbon(aes(ymin = mu - 2*sg, ymax = mu + 2*sg), alpha = 0.5)
+plot_us <- plot_us + geom_ribbon(aes(ymin = mu - 3*sg, ymax = mu + 3*sg), alpha = 0.5, fill = 'orange')
 plot_us <- plot_us + geom_hline(yintercept = 1, linetype = 2)
 plot_us <- plot_us + labs(title = 'us', y = 'r_experienced')
 
-gridExtra::grid.arrange(plot_uk, plot_us)
+gridExtra::grid.arrange(plot_uk, plot_us, ncol = 2)
