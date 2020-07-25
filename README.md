@@ -10,7 +10,7 @@ The model treats the reproductive number as a smooth function of mobility:
 ... where `M` represents mobility data (from Google) that's in `[-1, 0]`. In the stan model I've written,
 I've made a small chamge to this to make post-lockdown behaviour not be exactly the same as pre-lockdown behaviour.
 
-` R_t = R_0 exp(-b_0*M - s(t)*b_1) `
+` R_t = R_0 exp(b_0*M - s(t)*b_1) `
 
 ... where `b_1` is in `[0, 100]` and represents my belief that mobility post-lockdown will correspond to a smaller
 reproductive rate than pre-lockdown mobility of the same level. This model resulted in sensible predictions in some
